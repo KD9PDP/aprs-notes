@@ -1,5 +1,10 @@
 # What is this document?
 
+**THIS IS NOT A SPECIFICATION, IS LIKELY LINKING TO OUTDATED/INCORRECT LINKS, THERE WILL BE TYPOS.
+THIS IS AN EXERCISE IN BOTH ORGANIZING INFORMATION AT A VERY HIGH LEVEL (e.g., within a conceptual model like the OSI framework)
+TO PREPARE AND ARTICULATE THE BIG PICTURE. There is some details from other documents that are probably out of the scope
+of this document but are kept here just to not lose track of them.**
+
 This is an overview of the APRS protocol as it generally is implemented at the beginning of 2022. 
 The goal is to unwind and connect v1.0, v1.1, proposed v1.2 that is implemented in practice,
 and other useful information on [aprs.org](http://aprs.org) in perparation for future
