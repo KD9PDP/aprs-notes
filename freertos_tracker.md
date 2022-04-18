@@ -48,16 +48,16 @@ factor (e.g., 2), moving it closer to zero. Eventually the counter will be at ze
 Event-based tasks are run in parallel, and the MCU can sleep whenever it's not doing anything. Can essentially follow the lightAPRS
 code, but use task based concepts.
 * **APRS Tracker Task**: Every 1 minute (triggered off of some counter, or simply put it to sleep for 1 minute at the end of the loop)
-grab the GPS position and any other telemtry for an APRS location packet. Send a pointer to the completed packet to the *transmit queue*
-(or use stream buffers?). The transmit queue is a queue of pointers to packets that will be sent (but not all the same length?).
-(possibly: make the queue a queue of structs, each of which contains the binary data and number of bytes?) Should this be
-the entire data, including CRC and prefix/suffix sync bytes? Turn on a 1200 Hz timer.
+grab the GPS position and any other telemtry for an APRS location packet. Make a struct with the binary data
+and number of bytes. Send a pointer to the completed packet struct to the *transmit queue*. The transmit queue is a queue
+of pointers to packet structs that will be sent. We can use the afsk struct from libaprs. (basically port libaprs).
 * **Other APRS Packets**: Do the same above (wake up periodically, take data, build a packet) and add it to the transmit queue
 * **Transmit Interrupt Service Routine**: every 1/1200th of a second, see if there's anything in the transmit queue.
 If TX was off, do CSMA to see if we can get a channel, then key up transmitter and
-queue up some number of prefix sync bytes. The ISR will keep it's own transmit buffer and will fill from the transmit queue 
+queue up some number of prefix sync bytes. The ISR will get data from and modify the afsk struct like libaprs does to keep track
+of what has been transmitted so far.
 Send one bit (change the PWM between 1200 and 2000 Hz depending on the data). If 5 1s are in a row, bit stuff and send the 1 next time
-(rather than get another one). when ISR buffer is empty, grab another bit from the transmit queue. When transmit queue is empty, send
+(rather than get another one). When transmit queue is empty, send
 then ending suffix, turn off the PTT, and disable the 1200 Hz timer. Unlike non-RTOS versions, maybe we just use PWM directly rather than as DSS
 of a sine wave.
 * **Receive ISR**: On ADC tick, read in a value and send it via notification to the *Receive Processing Task*. Theoretically, 4800 Hz
