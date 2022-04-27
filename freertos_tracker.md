@@ -24,7 +24,10 @@ This is a work in progess, assembling ideas before building anything.
 * Enough RAM for an RTOS, low-power consumption = Raspberry Pi Pico
 * Over-the-horizon comms = APRS, DRA818V radio module with minicircuits LFCN-160+ low pass filter. Custom breakout board from OSH Park
 * Higher bitrate direct comms = LoRa [900 MHz for now](https://www.adafruit.com/product/3072)
-* GPS for high altitude = u-blox [Generic M8030-DR based module](https://www.amazon.com/dp/B07PRDY6DS), but can use a ublox max module
+* GPS for high altitude = u-blox [Generic M8030-DR based module](https://www.amazon.com/dp/B07PRDY6DS), but can use a ublox max module.
+Notes on GPS: can save settings to flash. Maybe just do that, but keep code to flash new chips... After writing the code, I see that
+you don't need to upload it every time if you have flash... otherwise you need to detect if GPS restarted and re-upload. On low power mode,
+it restarts if it can't find a fix on start up.
 
 ## Typical non-RTOS code
 1. Main loop: GPS is set to low power mode (1 Hz), so sleep for one second then read in (flush)
@@ -33,7 +36,7 @@ collecting other data sources, processing other data) is done within the timing 
 and makes low-power operation difficult (since it has to always be awake).
 1. Receive: ADC set to 9600 Hz. On every ADC interrupt, read the input audio value, send it to a FIFO, then do HDLC decode on the FIFO.
 1. Transmit: Use PWM for audio output (duty cycle proportional to output voltage).
-On the same ADC interrupt, advance the phase of the sine wave output based on whether the current tone is 1200 or 2000 Hz.
+On the same ADC interrupt, advance the phase of the sine wave output based on whether the current tone is 1200 or 2200 Hz.
 Every 8 ADC interrupts, read in the next bit to send from the TX buffer.
 If it's a 1, change the modulation frequency by changing how much phase gets advanced each ADC interupt.
 
@@ -58,9 +61,12 @@ queue up some number of prefix sync bytes. The ISR will get data from and modify
 of what has been transmitted so far.
 Send one bit (change the PWM between 1200 and 2000 Hz depending on the data). If 5 1s are in a row, bit stuff and send the 1 next time
 (rather than get another one). When transmit queue is empty, send
-then ending suffix, turn off the PTT, and disable the 1200 Hz timer. Unlike non-RTOS versions, maybe we just use PWM directly rather than as DSS
-of a sine wave.
-* **Receive ISR**: On ADC tick, read in a value and send it via notification to the *Receive Processing Task*. Theoretically, 4800 Hz
-ADC and a 4 point sine and cosine convolution would work fine and act as a low pass filter. Or can use 8 poiint like lightaprs does.
-* **Receive Processing Task**: On every bit, add it to a FIFO. Do the HDLC decoding.
+then ending suffix, turn off the PTT, and disable the 1200 Hz timer. Unlike non-RTOS versions, maybe we just use PWM directly rather
+than as DDS of a sine wave. But DDS sine wave is pretty cool, could just do that.
+* **Receive ISR**: On ADC tick, read in a value and send it via notification to the *Receive Processing Task*.
+* **Receive Processing Task**: On every bit, add it to a FIFO. Do the HDLC decoding. cosine + sine correlation detection.
+Centered/shifted so that zero phase is the middle of the vector. maybe do what direwolf does and decode in parallel with differen gain.
+Then low pass filter (the cos and sin correlator is terrible at filtering, and bell 202 has symbol rates at the same freq as the
+modulation!!!) [Maybe try a transposed direct form II biquad?](https://ccrma.stanford.edu/~jos/filters/Biquad_Software_Implementations.html)
+cool effect that TDFII and DFI have [internal overflow protection](https://ccrma.stanford.edu/~jos/filters/Direct_Form_I.html)
 * **LoRa Task**: Every so many seconds, assemble LoRa packet and send.
